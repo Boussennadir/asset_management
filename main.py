@@ -47,6 +47,24 @@ def main():
     logger.info("Démarrage de l'application Asset Management System")
     ensure_categories_exist() 
     app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+
+    app.setStyleSheet("""
+    QTableWidget {
+        background-color: white;
+        color: black;
+        gridline-color: #ddd;
+    }
+
+    QTableWidget::item {
+        color: black;
+    }
+
+    QTableWidget::item:selected {
+        background-color: #3b82f6;
+        color: white;
+    }
+    """)
     app.setFont(QFont("Segoe UI", 10))
     app.setStyle("Fusion")
 

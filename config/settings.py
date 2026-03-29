@@ -2,7 +2,7 @@
 Gestionnaire de configuration.
 Lit le fichier config.ini pour déterminer les paramètres de connexion à la base de données.
 """
-
+import sys
 import configparser
 import os
 
@@ -26,13 +26,22 @@ class Settings:
             self._loaded = True
 
     def _load_config(self):
-        """Charge le fichier de configuration."""
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), self.CONFIG_FILE)
+        """Charge le fichier config.ini (compatible exe)."""
+
+        
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(os.path.dirname(__file__))
+
+        config_path = os.path.join(base_path, self.CONFIG_FILE)
+
         if not os.path.exists(config_path):
             raise FileNotFoundError(
                 f"Le fichier de configuration '{config_path}' est introuvable.\n"
-                "Veuillez créer un fichier config.ini à la racine du projet."
+                "Veuillez créer un fichier config.ini à côté du programme."
             )
+
         self._config.read(config_path, encoding="utf-8")
 
     @property

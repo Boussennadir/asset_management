@@ -72,7 +72,7 @@ class DatabaseManager:
             cursor = self._connection.cursor()
             cursor.execute(query, params)
 
-            # ❌ لا تعمل commit هنا
+          
             return cursor
 
         except pyodbc.Error as e:
