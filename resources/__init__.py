@@ -1,0 +1,1 @@
+"""Ressources (styles, icônes, etc.)."""
