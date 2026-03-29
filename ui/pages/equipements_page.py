@@ -16,7 +16,6 @@ from ui.dialogs.equipement_dialog import EquipementDialog
 from ui.dialogs.transfer_dialog import TransferDialog
 
 
-# Couleurs de statut
 STATUS_COLORS = {
     "Actif": QColor("#dcfce7"),
     "Maintenance": QColor("#ffedd5"),
@@ -120,11 +119,27 @@ class EquipementsPage(QWidget):
 
     def _load_service_filter(self):
         """Charge les services dans le filtre."""
+
         try:
+            self.filter_service.blockSignals(True)
+
+            current = self.filter_service.currentData()
+
+            self.filter_service.clear()
+            self.filter_service.addItem("Tous les services", None)
+
             for s in ServiceManager().get_all(actif_only=True):
                 self.filter_service.addItem(s.nom, s.id)
+
+            if current:
+                index = self.filter_service.findData(current)
+                if index >= 0:
+                    self.filter_service.setCurrentIndex(index)
+
+            self.filter_service.blockSignals(False)
+
         except Exception:
-            pass
+            self.filter_service.blockSignals(False)
 
     def _get_filters(self) -> dict:
         filters = {}
@@ -144,6 +159,7 @@ class EquipementsPage(QWidget):
 
     def refresh(self):
         try:
+            self._load_service_filter()
             filters = self._get_filters()
             equipements = self.manager.get_all(filters if filters else None)
             self.table.setRowCount(len(equipements))

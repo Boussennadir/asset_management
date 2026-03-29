@@ -106,12 +106,16 @@ class DatabaseManager:
             logger.error("Erreur SQL (fetch_one): %s", e)
             raise
 
-    def log_action(self, table: str, action: str, record_id: int, details: str = ""):
+    def log_action(self, table: str, action: str, record_id: int, details: str = "", user: str = "system"):
         """Enregistre une action dans le journal d'audit."""
         try:
-            self.execute(
-                "INSERT INTO journal (table_nom, action, enregistrement_id, details) VALUES (?, ?, ?, ?)",
+            cursor = self.execute(
+                """INSERT INTO journal (table_nom, action, enregistrement_id, details)
+                VALUES (?, ?, ?, ?)""",
                 (table, action, record_id, details)
             )
+
+            self.connection.commit()
+
         except Exception as e:
             logger.warning("Impossible d'écrire dans le journal: %s", e)

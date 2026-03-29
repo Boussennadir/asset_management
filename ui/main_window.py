@@ -18,6 +18,7 @@ from ui.pages.services_page import ServicesPage
 from ui.pages.sous_services_page import SousServicesPage
 from ui.pages.equipements_page import EquipementsPage
 from resources.styles import MAIN_STYLE
+from ui.pages.history_page import HistoryPage
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,7 @@ class MainWindow(QMainWindow):
             ("🏢  Services", 1),
             ("📁  Sous-services", 2),
             ("💻  Équipements", 3),
+            ("🕘  Historique", 4),
         ]
 
         for text, index in nav_items:
@@ -109,12 +111,13 @@ class MainWindow(QMainWindow):
         self.services_page = ServicesPage()
         self.sous_services_page = SousServicesPage()
         self.equipements_page = EquipementsPage()
+        self.history_page = HistoryPage()
 
         self.pages.addWidget(self.dashboard_page)
         self.pages.addWidget(self.services_page)
         self.pages.addWidget(self.sous_services_page)
         self.pages.addWidget(self.equipements_page)
-
+        self.pages.addWidget(self.history_page)
         main_layout.addWidget(self.pages, 1)
 
     def _navigate(self, index: int):
@@ -139,6 +142,9 @@ class MainWindow(QMainWindow):
                 self.sous_services_page.refresh()
             elif index == 3:
                 self.equipements_page.refresh()
+            elif index == 4:
+                self.history_page.load_data
+
         except Exception as e:
             logger.error("Erreur lors du rafraîchissement : %s", e)
 

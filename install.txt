@@ -1,4 +1,3 @@
 install pyqt6
 install microsoft sql server 
 instal pyodbc 
-odbc 16

@@ -46,19 +46,24 @@ GO
 -- Table: categories
 -- ============================================
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='categories' AND xtype='U')
-CREATE TABLE categories (
-    id   INT IDENTITY(1,1) PRIMARY KEY,
-    nom  NVARCHAR(100) NOT NULL UNIQUE
-);
+BEGIN
+    CREATE TABLE categories (
+        id   INT IDENTITY(1,1) PRIMARY KEY,
+        nom  NVARCHAR(100) NOT NULL UNIQUE
+    );
+END
 GO
 
 -- Insertion de catégories par défaut
-INSERT INTO categories (nom) VALUES
+IF NOT EXISTS (SELECT 1 FROM categories)
+BEGIN
+    INSERT INTO categories (nom) VALUES
     (N'Informatique'),
     (N'Mobilier'),
     (N'Électronique'),
     (N'Véhicule'),
     (N'Autre');
+END
 GO
 
 -- ============================================
