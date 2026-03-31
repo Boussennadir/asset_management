@@ -6,13 +6,12 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QComboBox, QTextEdit,
     QDialogButtonBox, QMessageBox, QLabel
 )
+
 from models.models import Equipement
 from services.service_manager import ServiceManager
 from services.sous_service_manager import SousServiceManager
-from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
-from PyQt6.QtGui import QPainter
-from PyQt6.QtPdf import QPdfDocument
-from PyQt6.QtWidgets import QFileDialog
+
+
 class TransferDialog(QDialog):
     """Dialogue pour transférer un équipement vers un autre service."""
 
@@ -28,8 +27,10 @@ class TransferDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Info équipement
-        info = QLabel(f"<b>Équipement :</b> {self.equipement.nom}<br>"
-                      f"<b>Service actuel :</b> {self.equipement.service_nom}")
+        info = QLabel(
+            f"<b>Équipement :</b> {self.equipement.nom}<br>"
+            f"<b>Service actuel :</b> {self.equipement.service_nom}"
+        )
         layout.addWidget(info)
 
         form = QFormLayout()
@@ -52,69 +53,31 @@ class TransferDialog(QDialog):
         layout.addLayout(form)
         self._on_service_changed()
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+
         buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Transférer")
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
+
         buttons.accepted.connect(self._validate)
         buttons.rejected.connect(self.reject)
+
         layout.addWidget(buttons)
 
     def _on_service_changed(self):
         self.ss_combo.clear()
         self.ss_combo.addItem("— Aucun —", None)
+
         service_id = self.service_combo.currentData()
         if service_id:
             for ss in SousServiceManager().get_all(service_id=service_id):
                 self.ss_combo.addItem(ss.nom, ss.id)
 
-    def _print_pdf(self, pdf_path):
-        try:
-            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-
-            dialog = QPrintDialog(printer, self)
-            if dialog.exec() != QPrintDialog.DialogCode.Accepted:
-                return False
-
-            pdf = QPdfDocument(self)
-            if pdf.load(pdf_path) != QPdfDocument.Status.Ready:
-                QMessageBox.warning(self, "Erreur", "Impossible de charger le PDF.")
-                return False
-
-            painter = QPainter()
-            if not painter.begin(printer):
-                QMessageBox.warning(self, "Erreur", "Erreur lors de l'initialisation de l'impression.")
-                return False
-
-            for page in range(pdf.pageCount()):
-                page_size = pdf.pagePointSize(page)
-
-                # ⚠️ مهم: تحويل الصفحة إلى صورة بطريقة آمنة
-                image = pdf.render(page, page_size.toSize())
-
-                if image.isNull():
-                    QMessageBox.warning(self, "Erreur", "Erreur rendu PDF.")
-                    painter.end()
-                    return False
-
-                rect = painter.viewport()
-                size = image.size()
-                size.scale(rect.size(), aspectRatioMode=1)
-
-                painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
-                painter.setWindow(image.rect())
-
-                painter.drawImage(0, 0, image)
-
-                if page < pdf.pageCount() - 1:
-                    printer.newPage()
-
-            painter.end()
-            return True
-
-        except Exception as e:
-            QMessageBox.critical(self, "Erreur critique", str(e))
-            return False
-    
+    # ===============================
+    # ✅ VALIDATION (نسخة نظيفة)
+    # ===============================
     def _validate(self):
         new_service = self.service_combo.currentData()
         new_ss = self.ss_combo.currentData()
@@ -123,37 +86,29 @@ class TransferDialog(QDialog):
             QMessageBox.warning(self, "Erreur", "L'équipement est déjà dans ce service.")
             return
 
-        # 📂 اختيار مكان الحفظ
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Enregistrer le PDF",
-            f"decharge_{self.equipement.nom}.pdf",
-            "PDF Files (*.pdf)"
-        )
-
-        if not file_path:
-            return  # المستخدم ضغط cancel
-
-        # تأكد من الامتداد
-        if not file_path.endswith(".pdf"):
-            file_path += ".pdf"
-
         from services.pdf_generator import generate_transfer_pdf
 
         try:
+            # 🔥 إنشاء PDF تلقائي
             pdf_path = generate_transfer_pdf(
                 self.equipement,
                 self.service_combo.currentText(),
-                self.get_motif(),
-                file_path  # 👈 نمرر المسار
+                self.get_motif()
             )
+
+            print("PDF GENERATED:", pdf_path)
+
         except Exception as e:
             QMessageBox.critical(self, "Erreur PDF", str(e))
             return
 
-        QMessageBox.information(self, "Succès", "PDF enregistré avec succès ✅")
+        QMessageBox.information(
+            self,
+            "Succès",
+            "Décharge générée avec succès ✅\n\n"
+        )
 
-        # تأكيد التحويل
+        # ✅ تأكيد التحويل
         reply = QMessageBox.question(
             self,
             "Confirmation",
@@ -165,7 +120,7 @@ class TransferDialog(QDialog):
             return
 
         self.accept()
-            
+
     def get_new_service_id(self) -> int:
         return self.service_combo.currentData()
 
