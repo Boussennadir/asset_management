@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 import re
+import time
 
 
 # ===============================
@@ -31,7 +32,7 @@ def get_counter_file():
 
 
 # ===============================
-# 🔢 Génération référence (SAFE)
+# 🔢 Génération référence
 # ===============================
 def generate_reference():
     counter_file = get_counter_file()
@@ -39,8 +40,7 @@ def generate_reference():
     try:
         if not os.path.exists(counter_file):
             with open(counter_file, "w") as f:
-                f.write("1")
-            return "00001"
+                f.write("0")
 
         with open(counter_file, "r") as f:
             content = f.read().strip()
@@ -54,7 +54,6 @@ def generate_reference():
         return f"{new:05d}"
 
     except Exception:
-        # fallback في حالة خطأ
         return datetime.now().strftime("%Y%m%d%H%M%S")
 
 
@@ -66,21 +65,38 @@ def sanitize_filename(name):
 
 
 # ===============================
+# 🏷️ Format Service + Sous-service
+# ===============================
+def format_service(service_name, sous_service_name=None):
+    if sous_service_name and sous_service_name.strip() and sous_service_name != "— Aucun —":
+        return f"{service_name} - {sous_service_name}"
+    return service_name
+
+
+# ===============================
 # 📄 Génération PDF
 # ===============================
-def generate_transfer_pdf(equipement, service_name, motif):
-    # 🧹 تنظيف الاسم
-    safe_name = sanitize_filename(equipement.nom)
+def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=None):
 
-    # 📁 مسار الحفظ
-    filename = f"decharge_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    # 🔢 reference
+    ref = generate_reference()
+
+    # 🔵 SOURCE (الخدمة الحالية)
+    source_service = format_service(
+        equipement.service_nom,
+        getattr(equipement, "sous_service_nom", None)
+    )
+
+    # 🟢 DESTINATION (الخدمة الجديدة)
+    destination_service = format_service(service_name, sous_service_name)
+    # 📁 path
+    filename = f"decharge_{ref}.pdf"
     file_path = os.path.join(get_pdf_directory(), filename)
 
-    # 📄 إنشاء PDF
+    # 📄 PDF
     c = canvas.Canvas(file_path, pagesize=A4)
     width, height = A4
 
-    ref = generate_reference()
     today = datetime.now().strftime("%d/%m/%Y")
 
     # ===== HEADER =====
@@ -104,7 +120,7 @@ def generate_transfer_pdf(equipement, service_name, motif):
 
     # ===== REF + DATE =====
     c.setFont("Helvetica", 11)
-    c.drawString(50, height - 160, f"N°: CDI-{ref}")
+    c.drawString(50, height - 160, f"N°: {ref}")
     c.drawRightString(width - 50, height - 160, f"Date: {today}")
 
     # ===== TEXT =====
@@ -117,7 +133,7 @@ def generate_transfer_pdf(equipement, service_name, motif):
     data = [
         ["Désignation", "N° série", "Observation"],
         [
-            equipement.nom,
+            source_service,
             str(equipement.numero_serie),
             motif if motif else "-"
         ]
@@ -138,7 +154,7 @@ def generate_transfer_pdf(equipement, service_name, motif):
     # ===== LOCATION =====
     c.drawString(
         50, height - 300,
-        f"Reçu à: {service_name} le: {today}"
+        f"Reçu à: {destination_service} le: {today}"    
     )
 
     # ===== SIGNATURE =====
@@ -149,11 +165,10 @@ def generate_transfer_pdf(equipement, service_name, motif):
     # ===== SAVE =====
     c.save()
 
-    # ✅ Vérification
-    if not os.path.exists(file_path):
-        raise Exception("Erreur: PDF non créé")
+    # 🔥 التأكد من أن PDF جاهز
+    for _ in range(20):
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            return file_path
+        time.sleep(0.1)
 
-    if os.path.getsize(file_path) == 0:
-        raise Exception("Erreur: PDF vide")
-
-    return file_path
+    raise Exception("Erreur: PDF non prêt ou vide")

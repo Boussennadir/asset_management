@@ -10,7 +10,16 @@ from PyQt6.QtWidgets import (
 from models.models import Equipement
 from services.service_manager import ServiceManager
 from services.sous_service_manager import SousServiceManager
-
+from PyQt6.QtGui import QPainter
+from PyQt6.QtPdf import QPdfDocument
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+from PyQt6.QtGui import QPainter
+from PyQt6.QtPdf import QPdfDocument
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+import time
+import os
 
 class TransferDialog(QDialog):
     """Dialogue pour transférer un équipement vers un autre service."""
@@ -74,7 +83,71 @@ class TransferDialog(QDialog):
         if service_id:
             for ss in SousServiceManager().get_all(service_id=service_id):
                 self.ss_combo.addItem(ss.nom, ss.id)
+    
+    
 
+    def wait_for_pdf(file_path, timeout=3):
+        import os
+        import time
+
+        # 🔥 تحويل timeout إلى رقم مهما كان
+        try:
+            timeout = float(timeout)
+        except:
+            timeout = 3
+
+        start = time.time()
+
+        while (time.time() - start) < timeout:
+            if isinstance(file_path, str) and os.path.exists(file_path):
+                size = os.path.getsize(file_path)
+
+                if size > 0:
+                    return True
+
+            time.sleep(0.1)
+
+        return False
+    
+    def print_pdf_in_app(self, pdf_path):
+        
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+
+        dialog = QPrintDialog(printer, self)
+        if dialog.exec() != QPrintDialog.DialogCode.Accepted:
+            return False
+
+        pdf = QPdfDocument(self)
+        if pdf.load(pdf_path) != QPdfDocument.Status.Ready:
+            return False
+
+        painter = QPainter()
+        if not painter.begin(printer):
+            return False
+
+        for page in range(pdf.pageCount()):
+            page_size = pdf.pagePointSize(page)
+            image = pdf.render(page, page_size.toSize())
+
+            if image.isNull():
+                painter.end()
+                return False
+
+            rect = painter.viewport()
+            size = image.size()
+            size.scale(rect.size(), Qt.AspectRatioMode.KeepAspectRatio)
+
+            painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+            painter.setWindow(image.rect())
+
+            painter.drawImage(0, 0, image)
+
+            if page < pdf.pageCount() - 1:
+                printer.newPage()
+
+        painter.end()
+        return True
+        
     # ===============================
     # ✅ VALIDATION (نسخة نظيفة)
     # ===============================
@@ -82,45 +155,43 @@ class TransferDialog(QDialog):
         new_service = self.service_combo.currentData()
         new_ss = self.ss_combo.currentData()
 
+        # ✅ تحقق من عدم نفس الخدمة
         if new_service == self.equipement.service_id and new_ss == self.equipement.sous_service_id:
-            QMessageBox.warning(self, "Erreur", "L'équipement est déjà dans ce service.")
+            QMessageBox.warning(
+                self,
+                "Erreur",
+                "L'équipement est déjà dans ce service."
+            )
             return
 
         from services.pdf_generator import generate_transfer_pdf
+        import os
 
         try:
-            # 🔥 إنشاء PDF تلقائي
+            # 📄 إنشاء PDF
             pdf_path = generate_transfer_pdf(
                 self.equipement,
                 self.service_combo.currentText(),
-                self.get_motif()
+                self.get_motif(),
+                self.ss_combo.currentText()   # 👈 مهم
             )
 
             print("PDF GENERATED:", pdf_path)
 
+            # 🔥 فتح PDF فقط
+            os.startfile(pdf_path)
+
         except Exception as e:
-            QMessageBox.critical(self, "Erreur PDF", str(e))
+            QMessageBox.critical(self, "Erreur", str(e))
             return
 
         QMessageBox.information(
             self,
             "Succès",
-            "Décharge générée avec succès ✅\n\n"
+            "Décharge générée et ouverte avec succès ✅"
         )
-
-        # ✅ تأكيد التحويل
-        reply = QMessageBox.question(
-            self,
-            "Confirmation",
-            "Confirmer le transfert ?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.No:
-            return
-
         self.accept()
-
+    
     def get_new_service_id(self) -> int:
         return self.service_combo.currentData()
 
