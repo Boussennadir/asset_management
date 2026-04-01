@@ -75,6 +75,7 @@ CREATE TABLE equipements (
     nom             NVARCHAR(200) NOT NULL,
     categorie_id    INT NOT NULL,
     numero_serie    NVARCHAR(100) NULL UNIQUE,
+    code            NVARCHAR(50) UNIQUE,
     date_achat      DATE NULL,
     statut          NVARCHAR(20) NOT NULL DEFAULT 'Actif'
                     CHECK (statut IN ('Actif', 'Maintenance', 'En panne')),
