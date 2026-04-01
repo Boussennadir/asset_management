@@ -14,7 +14,7 @@ import time
 
 
 # ===============================
-# 📁 Dossier Documents
+# 📁 Dossier Documents (PDF)
 # ===============================
 def get_pdf_directory():
     folder = Path.home() / "Documents" / "AssetApp" / "Decharges"
@@ -23,12 +23,13 @@ def get_pdf_directory():
 
 
 # ===============================
-# 🔢 Fichier compteur
+# 🔢 Fichier compteur (AppData 🔥)
 # ===============================
 def get_counter_file():
-    folder = Path.home() / "Documents" / "AssetApp"
-    folder.mkdir(parents=True, exist_ok=True)
-    return str(folder / "reference_counter.txt")
+    base = Path(os.getenv("LOCALAPPDATA")) / "AssetApp"
+    base.mkdir(parents=True, exist_ok=True)
+
+    return str(base / "reference_counter.txt")
 
 
 # ===============================
@@ -54,14 +55,8 @@ def generate_reference():
         return f"{new:05d}"
 
     except Exception:
+        # fallback قوي
         return datetime.now().strftime("%Y%m%d%H%M%S")
-
-
-# ===============================
-# 🧹 Nettoyer nom fichier
-# ===============================
-def sanitize_filename(name):
-    return re.sub(r'[\\/*?:"<>|]', "_", name)
 
 
 # ===============================
@@ -81,14 +76,15 @@ def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=Non
     # 🔢 reference
     ref = generate_reference()
 
-    # 🔵 SOURCE (الخدمة الحالية)
+    # 🔵 SOURCE
     source_service = format_service(
         equipement.service_nom,
         getattr(equipement, "sous_service_nom", None)
     )
 
-    # 🟢 DESTINATION (الخدمة الجديدة)
+    # 🟢 DESTINATION
     destination_service = format_service(service_name, sous_service_name)
+
     # 📁 path
     filename = f"decharge_{ref}.pdf"
     file_path = os.path.join(get_pdf_directory(), filename)
@@ -101,18 +97,15 @@ def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=Non
 
     # ===== HEADER =====
     c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(
-        width / 2, height - 50,
-        "REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE"
-    )
+    c.drawCentredString(width / 2, height - 50,
+        "REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE")
 
     c.setFont("Helvetica", 12)
-    c.drawCentredString(width / 2, height - 75, "Centre Des Impôts Batna")
+    c.drawCentredString(width / 2, height - 75,
+        "Centre Des Impôts Batna")
 
-    c.drawCentredString(
-        width / 2, height - 95,
-        "Service d’Informatique et de la gestion des Moyennes"
-    )
+    c.drawCentredString(width / 2, height - 95,
+        "Service d’Informatique et de la gestion des Moyennes")
 
     # ===== TITLE =====
     c.setFont("Helvetica-Bold", 13)
@@ -133,7 +126,7 @@ def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=Non
     data = [
         ["Désignation", "N° série", "Observation"],
         [
-            source_service,
+            source_service,   # 🔥 SOURCE فقط
             str(equipement.numero_serie),
             motif if motif else "-"
         ]
@@ -154,7 +147,7 @@ def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=Non
     # ===== LOCATION =====
     c.drawString(
         50, height - 300,
-        f"Reçu à: {destination_service} le: {today}"    
+        f"Reçu à: {destination_service} le: {today}"
     )
 
     # ===== SIGNATURE =====
@@ -165,7 +158,7 @@ def generate_transfer_pdf(equipement, service_name, motif, sous_service_name=Non
     # ===== SAVE =====
     c.save()
 
-    # 🔥 التأكد من أن PDF جاهز
+    # 🔥 تأكد أن PDF جاهز
     for _ in range(20):
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
