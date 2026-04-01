@@ -14,7 +14,9 @@ from services.asset_manager import AssetManager
 from services.service_manager import ServiceManager
 from ui.dialogs.equipement_dialog import EquipementDialog
 from ui.dialogs.transfer_dialog import TransferDialog
-
+from services.barcode_generator import generate_barcode_pdf
+import os
+from PyQt6.QtWidgets import QMessageBox
 
 STATUS_COLORS = {
     "Actif": QColor("#dcfce7"),
@@ -99,6 +101,11 @@ class EquipementsPage(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
+        btn_barcode = QPushButton("🏷️ Code Barre")
+        btn_barcode.setObjectName("btn_secondary")
+        btn_barcode.clicked.connect(self._generate_barcode)
+        btn_layout.addWidget(btn_barcode)
+        
         btn_transfer = QPushButton("🔄 Transférer")
         btn_transfer.setObjectName("btn_success")
         btn_transfer.setStyleSheet("background-color: #8b5cf6;")
@@ -239,3 +246,26 @@ class EquipementsPage(QWidget):
                 QMessageBox.information(self, "Succès", "L'équipement a été transféré avec succès.")
             except Exception as e:
                 QMessageBox.critical(self, "Erreur", f"Erreur lors du transfert :\n{e}")
+    
+    def _generate_barcode(self):
+        row = self.table.currentRow()
+
+        if row < 0:
+            QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un équipement.")
+            return
+
+        try:
+            eid = int(self.table.item(row, 0).text())
+            eq = self.manager.get_by_id(eid)
+
+            # 🔥 توليد PDF لعنصر واحد
+            pdf_path = generate_barcode_pdf(eq)
+
+            QMessageBox.information(
+                self,
+                "Succès",
+                f"Code barre généré avec succès ✅"
+            )
+
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", str(e))

@@ -1,4 +1,3 @@
-from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 from reportlab.lib.units import mm
@@ -6,52 +5,46 @@ from pathlib import Path
 import os
 
 
-# 📁 نفس dossier
 def get_barcode_directory():
     folder = Path.home() / "Documents" / "AssetApp" / "Barcodes"
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder)
 
 
-def generate_barcode_pdf(equipements):
-    """
-    equipements = list of objects (each has nom + numero_serie)
-    """
+def generate_barcode_pdf(equipement):
+    value = str(equipement.numero_serie)
 
-    file_path = os.path.join(get_barcode_directory(), "barcodes.pdf")
+    width = 70 * mm
+    height = 35 * mm
 
-    c = canvas.Canvas(file_path, pagesize=A4)
+    file_path = os.path.join(
+        get_barcode_directory(),
+        f"barcode_{value}.pdf"
+    )
 
-    x = 20
-    y = 800
+    c = canvas.Canvas(file_path, pagesize=(width, height))
 
-    for eq in equipements:
+    barcode = code128.Code128(
+        value,
+        barHeight=15 * mm,
+        barWidth=0.5
+    )
 
-        value = str(eq.numero_serie)
+    barcode_width = barcode.width
+    barcode_x = (width - barcode_width) / 2
+    barcode_y = height / 2 - 5
 
-        barcode = code128.Code128(
-            value,
-            barHeight=20 * mm,
-            barWidth=0.4
-        )
+    barcode.drawOn(c, barcode_x, barcode_y)
 
-        # رسم الباركود
-        barcode.drawOn(c, x, y)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(width / 2, 10, value)
 
-        # اسم الجهاز
-        c.setFont("Helvetica", 8)
-        c.drawString(x, y - 15, eq.nom)
-
-        # الرقم
-        c.drawString(x, y - 25, value)
-
-        y -= 80
-
-        # صفحة جديدة إذا انتهى المكان
-        if y < 50:
-            c.showPage()
-            y = 800
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(width / 2, 3, equipement.nom)
 
     c.save()
+
+    # 🔥 فتح الملف مباشرة
+    os.startfile(file_path)
 
     return file_path
